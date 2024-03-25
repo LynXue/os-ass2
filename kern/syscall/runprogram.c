@@ -45,6 +45,8 @@
 #include <syscall.h>
 #include <test.h>
 
+#include <file.h>
+
 /*
  * Load program "progname" and start running it in usermode.
  * Does not return except on error.
@@ -94,6 +96,19 @@ runprogram(char *progname)
 	result = as_define_stack(as, &stackptr);
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
+		return result;
+	}
+
+	/* ADDED(): Iinitialize fd_table for process*/
+	result = fd_table_init(&curproc->fdtable);
+	if (result) {
+		return result;
+	}
+
+	// kprintf("fd_table_init finished.\n");
+	/* ADDED():attach stdout, stderror to console */
+	result = setup_stdout_stderr();
+	if (result) {
 		return result;
 	}
 

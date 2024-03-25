@@ -53,6 +53,9 @@
 /* Additional related definition */
 #define O_ACCMODE     3      /* mask for O_RDONLY/O_WRONLY/O_RDWR */
 
+/* ADDED(): 定义所有有效的打开文件标志: */
+#define VALID_FLAGS (O_ACCMODE | O_CREAT | O_EXCL | O_TRUNC | O_APPEND | O_NOCTTY)
+
 /*
  * Not so important
  */
