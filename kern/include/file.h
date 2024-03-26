@@ -16,6 +16,8 @@
  * Put your function declarations and data types here ...
  */
 
+/* ADDED(): define abs*/
+#define KERNEL_ABS(x) ((x) < 0 ? -(x) : (x))
 
 /* File descriptor structure, each process has its own array of file descriptors */
 struct file_descriptor {
@@ -55,6 +57,8 @@ int sys_open(userptr_t pathname, int flags, mode_t mode, int *retval);
 int sys_close(int fd);
 int sys_read(int fd, void *buf, size_t buflen, size_t *retval);
 int sys_write(int fd, void *buf, size_t buflen, size_t *retval);
+int sys_lseek(int fd, off_t offset, int whence, off_t *retval);
+int sys_dup2(int old_fd, int new_fd, int *retval);
 
 /* helper function*/
 int create_open_file(char *path, int flags, mode_t mode, struct open_file **ret);
@@ -64,8 +68,6 @@ int fd_check(int fd);
 int open_console(char *path, int flags, struct open_file **of_ret);
 int init_fd_for_console(struct fd_table *fdt, struct open_file *of, int fd_target);
 int sys_rw(int fd, void *buf, size_t buflen, enum uio_rw flag, size_t *retval);
-
-
 
 
 

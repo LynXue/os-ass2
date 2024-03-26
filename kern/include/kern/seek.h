@@ -43,5 +43,8 @@
 #define SEEK_CUR      1      /* Seek relative to current position in file */
 #define SEEK_END      2      /* Seek relative to end of file */
 
+/* ADDED(): define valid seek position */
+#define VALID_WHENCE	SEEK_SET | SEEK_CUR | SEEK_END
+
 
 #endif /* _KERN_SEEK_H_ */

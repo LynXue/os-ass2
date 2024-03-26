@@ -170,6 +170,7 @@ sys_open(userptr_t pathname, int flags, mode_t mode, int *retval) {
     struct open_file *of = NULL;
     char *path;
     int result, fd_index, global_index;
+    *retval = -1;
 
     // Check for any unknown flags */
     if ((flags & VALID_FLAGS) != flags) {
@@ -291,8 +292,8 @@ sys_close(int fd) {
     // Clean up the global open file table entry if ref_count is 0
     if (of->ref_count == 0) {
         kfree(of);
-        oft->files[global_index] = NULL; // Clear the entry in the global open file table
-        curproc->fdtable->fd_array[fd].in_use = 0; //mark the slot unused
+        oft->files[global_index] = NULL;           // Clear the entry in the global open file table
+        curproc->fdtable->fd_array[fd].in_use = 0; // mark the slot unused
     }
 
     return 0; // Indicate success
@@ -321,6 +322,7 @@ fd_check(int fd) {
 
 int
 sys_rw(int fd, void *buf, size_t buflen, enum uio_rw flag, size_t *retval) {
+    *retval = -1;
     // check file descriptor number
     int global_index = fd_check(fd);
     if (global_index < 0) {
@@ -341,9 +343,9 @@ sys_rw(int fd, void *buf, size_t buflen, enum uio_rw flag, size_t *retval) {
     struct uio myuio;
     off_t offset = of->offset;
     /**
-     * The user-provided read_buf and the requested number of bytes to read, nbytes, 
-     * are used to initialize the iovec and uio structures. 
-    */
+     * The user-provided read_buf and the requested number of bytes to read, nbytes,
+     * are used to initialize the iovec and uio structures.
+     */
     uio_kinit(&iov, &myuio, buf, buflen, offset, flag);
     // check whether read or write
     int result;
@@ -359,18 +361,108 @@ sys_rw(int fd, void *buf, size_t buflen, enum uio_rw flag, size_t *retval) {
     // update offset of the open file
     of->offset = myuio.uio_offset;
     /**
-     * After the read or write is completed, the actual number of bytes read is 
+     * After the read or write is completed, the actual number of bytes read is
      * determined by checking the reduction in uio_resid
-    */
+     */
     *retval = buflen - myuio.uio_resid;
 
     return 0;
 }
 
-int sys_read(int fd, void *buf, size_t buflen, size_t *retval) {
+int
+sys_read(int fd, void *buf, size_t buflen, size_t *retval) {
     return sys_rw(fd, buf, buflen, UIO_READ, retval);
 }
 
-int sys_write(int fd, void *buf, size_t buflen, size_t *retval) {
+int
+sys_write(int fd, void *buf, size_t buflen, size_t *retval) {
     return sys_rw(fd, buf, buflen, UIO_WRITE, retval);
+}
+
+int
+sys_lseek(int fd, off_t offset, int whence, off_t *retval) {
+    struct stat file_info;
+    off_t file_size; /* file size in bytes */
+    off_t position;
+    int result;
+    *retval = -1;
+
+    // check file descriptor
+    int global_index = fd_check(fd);
+    if (global_index == -1) {
+        return EBADF;
+    }
+
+    struct vnode *vnode = oft->files[global_index]->vnode;
+
+    // Check if this file is seekable
+    if (!VOP_ISSEEKABLE(vnode)) {
+        return ESPIPE; // illegal seek
+    }
+
+    // Get file size in struct stat
+    result = VOP_STAT(vnode, &file_info);
+    if (result) {
+        return result;
+    }
+    file_size = file_info.st_size;
+
+    int cur_offset = oft->files[global_index]->offset;
+
+    // Check whence arguemnt
+    if (whence == SEEK_SET) {
+        if (offset < 0) {
+            return EINVAL; // Invalid argument
+        }
+        position = offset;
+    } else if (whence == SEEK_CUR) {
+        if (offset < 0 && KERNEL_ABS(offset) > cur_offset) {
+            return EINVAL; // Invalid argument
+        }
+        position = offset + cur_offset;
+    } else if (whence == SEEK_END) {
+        if (offset < 0 && KERNEL_ABS(offset) > file_size) {
+            return EINVAL; // Invalid argument
+        }
+        position = offset + file_size;
+    } else {
+        return EINVAL; // Invalid argument
+    }
+
+    // update read/write position in the file
+    oft->files[global_index]->offset = position;
+    *retval = position;
+
+    return 0;
+}
+
+int
+sys_dup2(int old_fd, int new_fd, int *retval) {
+    *retval = -1;
+
+    // Check file descriptor
+    if (old_fd < 0 || old_fd >= OPEN_MAX || new_fd < 0 || new_fd >= OPEN_MAX) {
+        return EBADF;
+    }
+
+    // Check if old_fd is opened
+    int global_index = fd_check(old_fd);
+    if (global_index == -1) {
+        return EBADF;
+    }
+
+    // if new_fd is opened, need to close it first, then copy
+    if (old_fd != new_fd && curproc->fdtable->fd_array[new_fd].global_index != -1) {
+        int result = sys_close(new_fd);
+        if (result) {
+            return EBADF;
+        }
+        curproc->fdtable->fd_array[new_fd] = curproc->fdtable->fd_array[old_fd];
+        oft->files[global_index]->ref_count++;
+        *retval = new_fd;
+    } else {
+        *retval = old_fd;
+    }
+
+    return 0;
 }
