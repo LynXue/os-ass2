@@ -294,7 +294,7 @@ sys_close(int fd) {
         kfree(of);
         oft->files[global_index] = NULL;           // Clear the entry in the global open file table
         curproc->fdtable->fd_array[fd].in_use = 0; // mark the slot unused
-        curproc->fdtable->fd_array[fd].global_index = -1; 
+        curproc->fdtable->fd_array[fd].global_index = -1;
     }
 
     return 0; // Indicate success
@@ -343,16 +343,27 @@ sys_rw(int fd, void *buf, size_t buflen, enum uio_rw flag, size_t *retval) {
     struct iovec iov;
     struct uio myuio;
     off_t offset = of->offset;
-    /**
-     * The user-provided read_buf and the requested number of bytes to read, nbytes,
-     * are used to initialize the iovec and uio structures.
-     */
-    uio_kinit(&iov, &myuio, buf, buflen, offset, flag);
+
     // check whether read or write
     int result;
+    char kernel_buf[buflen];
     if (flag == UIO_WRITE) {
+        result = copyin((userptr_t)buf, kernel_buf, buflen);
+        if (result) {
+            return result;
+        }
+        /**
+         * The user-provided read_buf and the requested number of bytes to read, nbytes,
+         * are used to initialize the iovec and uio structures.
+         */
+        uio_kinit(&iov, &myuio, kernel_buf, buflen, offset, flag);
         result = VOP_WRITE(vn, &myuio);
     } else {
+        result = copyout(kernel_buf, (userptr_t)buf, buflen);
+        if (result) {
+            return result;
+        }
+        uio_kinit(&iov, &myuio, kernel_buf, buflen, offset, flag);
         result = VOP_READ(vn, &myuio);
     }
 
@@ -460,7 +471,7 @@ sys_dup2(int old_fd, int new_fd, int *retval) {
             if (result) {
                 return EBADF;
             }
-        } 
+        }
         curproc->fdtable->fd_array[new_fd] = curproc->fdtable->fd_array[old_fd];
         oft->files[global_index]->ref_count++;
         *retval = new_fd;
