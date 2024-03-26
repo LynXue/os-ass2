@@ -294,6 +294,7 @@ sys_close(int fd) {
         kfree(of);
         oft->files[global_index] = NULL;           // Clear the entry in the global open file table
         curproc->fdtable->fd_array[fd].in_use = 0; // mark the slot unused
+        curproc->fdtable->fd_array[fd].global_index = -1; 
     }
 
     return 0; // Indicate success
@@ -451,17 +452,18 @@ sys_dup2(int old_fd, int new_fd, int *retval) {
         return EBADF;
     }
 
-    // if new_fd is opened, need to close it first, then copy
-    if (old_fd != new_fd && curproc->fdtable->fd_array[new_fd].global_index != -1) {
-        int result = sys_close(new_fd);
-        if (result) {
-            return EBADF;
-        }
+    if (old_fd == new_fd) {
+        *retval = new_fd;
+    } else {
+        if (curproc->fdtable->fd_array[new_fd].global_index != -1) { // new_fd opened, need to close it first
+            int result = sys_close(new_fd);
+            if (result) {
+                return EBADF;
+            }
+        } 
         curproc->fdtable->fd_array[new_fd] = curproc->fdtable->fd_array[old_fd];
         oft->files[global_index]->ref_count++;
         *retval = new_fd;
-    } else {
-        *retval = old_fd;
     }
 
     return 0;
