@@ -353,17 +353,13 @@ sys_rw(int fd, void *buf, size_t buflen, enum uio_rw flag, size_t *retval) {
             return result;
         }
         /**
-         * The user-provided read_buf and the requested number of bytes to read, nbytes,
+         * The user-provided write_buf and the requested number of bytes to write, nbytes,
          * are used to initialize the iovec and uio structures.
          */
         uio_kinit(&iov, &myuio, kernel_buf, buflen, offset, flag);
         result = VOP_WRITE(vn, &myuio);
     } else {
-        result = copyout(kernel_buf, (userptr_t)buf, buflen);
-        if (result) {
-            return result;
-        }
-        uio_kinit(&iov, &myuio, kernel_buf, buflen, offset, flag);
+        uio_kinit(&iov, &myuio, buf, buflen, offset, flag);
         result = VOP_READ(vn, &myuio);
     }
 
