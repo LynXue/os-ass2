@@ -300,6 +300,7 @@ sys_close(int fd) {
     return 0; // Indicate success
 }
 
+// Check the range of fd
 int
 fd_check(int fd) {
     // Check the range of fd

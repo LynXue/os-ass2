@@ -60,7 +60,7 @@ int sys_write(int fd, void *buf, size_t buflen, size_t *retval);
 int sys_lseek(int fd, off_t offset, int whence, off_t *retval);
 int sys_dup2(int old_fd, int new_fd, int *retval);
 
-/* helper function*/
+/* other helper function*/
 int create_open_file(char *path, int flags, mode_t mode, struct open_file **ret);
 int insert_open_file(struct open_file *of, int *global_index);
 int allocate_fd(struct fd_table *fdt, int global_index);

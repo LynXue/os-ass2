@@ -209,6 +209,7 @@ kmain(char *arguments) {
     // kprintf("system boot success.\n");
 
 	/* ADDED(): initialize the global open file after boot */
+    // add new content here
 	int result = of_table_init();
 	if (result) {
 		panic("Fail to initialize global open file table.\n");
