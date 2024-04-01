@@ -75,7 +75,7 @@ struct proc {
 	struct fd_table *fdtable; 
 
 };
-/* This is the process structure for the kernel and for kernel-only threads. */s
+/* This is the process structure for the kernel and for kernel-only threads. */
 /* This is the process structure for the kernel and for kernel-only threads. */
 extern struct proc *kproc;
 
